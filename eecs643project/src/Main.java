@@ -10,6 +10,7 @@ public class Main {
 		Map<String, Integer> Registers = new HashMap<String, Integer>();
 		Map<String, Integer> Memory = new HashMap<String, Integer>();
 		Registers.put("R0", 0);// R0 is always 0
+		String output="";
 
 		// Read input files, fill registers, memory,and instructions
 		try {
@@ -17,7 +18,7 @@ public class Main {
 		} catch (IOException ioe) {
 		}
 
-		
+		Pipeline pipeline=new Pipeline();
 		//Begin Pipeline here
 		//IF1, IF2, ID, EX, MEM1, MEM2, MEM3, WB
 		//IF1-PC selection, initiate instruction cache access
@@ -28,7 +29,7 @@ public class Main {
 		//MEM2-completion of data cache acccess
 		//MEM3-Tag check, determine whether the data cache access hit
 		//WB- Write-back for loads and register-register ops
-		
+		pipeline.IF1(Instructions.get(0));
 		
 		
 		
