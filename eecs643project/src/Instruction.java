@@ -4,6 +4,7 @@ public class Instruction {
 	public String source1="", source2="";
 	public String dest="";
 	public int inst_num;
+	public int pipeline_number;
 	public int offset;
 	public Integer imm;
 	public String branch_word="";//for branch instructions only

@@ -14,10 +14,12 @@ public class Main {
   static Pipeline pipeline = new Pipeline();
   static boolean stall_check = false;
   static PrintStream out = null;
-
   static boolean stop = false;
+  static String inputfile, outputfile;
+  static public boolean continuestep = false;
+  static public boolean continueloop = true;
 
-  public static void main(String args[]) {
+  public static void main(String args[]) throws IOException {
 
     // setup variables
     ArrayList<Instruction> Instructions = new ArrayList<Instruction>();// holds
@@ -32,19 +34,28 @@ public class Main {
                                                                  // memory
 
     Registers.put("R0", 0);// R0 is always 0
-    String output = "";
+
+    // For file IO
+    BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+    PrintStream out = null;
+    try {
+      System.out.println("What is the name of the input file?");
+      inputfile = br.readLine();
+      System.out.println("What is the name of the output file?");
+      outputfile = br.readLine();
+      continuestep = true;
+    } finally {
+    }
 
     // Read input files, fill registers, memory,and instructions
     try {
-      Readfiles("input.txt", Registers, Memory, Instructions);
+      Readfiles(inputfile, Registers, Memory, Instructions);
     } catch (IOException ioe) {
     }
     try {
-      PrintStream out = new PrintStream(new FileOutputStream("output.txt"));
+      out = new PrintStream(new FileOutputStream(outputfile));
     } catch (FileNotFoundException e) {
     }
-    // enable when done
-    // System.setOut(out);
 
     pipeline.initialize(Registers, Memory);
 
@@ -67,14 +78,24 @@ public class Main {
         ins.stage = "IF1";
         Instruction i2 = new Instruction();
         i2.raw_text = ins.raw_text;
-        i2.branch_word = ins.branch_word;
         i2.inst_num = ins.inst_num;
         i2.stage = ins.stage;// clone i
         pipeline.giveInst(i2);
       }
 
-      while (pipeline.finished!=pipeline.Instructions.size()) {
-        System.out.print("c#" + pipeline.cycle + " ");
+      String temp;
+
+      while (pipeline.finished != pipeline.Instructions.size() && continueloop) {
+        if (continuestep) {
+          System.out
+              .println("Would you like to continue? Type quit to end. Otherwise program will continue");
+          temp = br.readLine();
+          if (temp.equals("quit")) {
+            continueloop = false;
+            break;
+          }
+        }
+        out.print("c#" + pipeline.cycle + " ");
 
         // go through all instructions given to pipeline
         // they are processed WB to IF1
@@ -83,78 +104,90 @@ public class Main {
 
           if (itemp.stage.equals("WB")) {
             if (pipeline.stalling) {
-              System.out.print("I" + ((int) (itemp.inst_num / 4) + 1) + "-stall ");
+              out.print("I" + itemp.pipeline_number + "-stall ");
             } else {
-              System.out.print("I" + ((int) (itemp.inst_num / 4) + 1) + "-WB ");
+              out.print("I" + itemp.pipeline_number + "-WB ");
               pipeline.WB(itemp);
             }
             // MEM3
           } else if (itemp.stage.equals("MEM3")) {
             if (pipeline.stalling) {
-              System.out.print("I" + ((int) (itemp.inst_num / 4) + 1) + "-stall ");
+              out.print("I" + itemp.pipeline_number + "-stall ");
             } else {
-              System.out.print("I" + ((int) (itemp.inst_num / 4) + 1) + "-MEM3 ");
+              out.print("I" + itemp.pipeline_number + "-MEM3 ");
               pipeline.MEM3(itemp);
             }
             // MEM2
           } else if (itemp.stage.equals("MEM2")) {
             if (pipeline.stalling) {
-              System.out.print("I" + ((int) (itemp.inst_num / 4) + 1) + "-stall ");
+              out.print("I" + itemp.pipeline_number + "-stall ");
             } else {
-              System.out.print("I" + ((int) (itemp.inst_num / 4) + 1) + "-MEM2 ");
+              out.print("I" + itemp.pipeline_number + "-MEM2 ");
               pipeline.MEM2(itemp);
             }
             // MEM1
           } else if (itemp.stage.equals("MEM1")) {
             if (pipeline.stalling) {
-              System.out.print("I" + ((int) (itemp.inst_num / 4) + 1) + "-stall ");
+              out.print("I" + itemp.pipeline_number + "-stall ");
             } else {
-              // PC may change here, branch may be true
-              if (itemp.branch_taken == true) {
-                System.out.println(pipeline.PC);
-                System.out.println(itemp.branch_word);
-                System.out.println(Branches.get(itemp.branch_word));
-                pipeline.PC = Branches.get(itemp.branch_word);
-              }
-
-              System.out.print("I" + ((int) (itemp.inst_num / 4) + 1) + "-MEM1 ");
+              out.print("I" + itemp.pipeline_number + "-MEM1 ");
               pipeline.MEM1(itemp);
             }
             // EXE
           } else if (itemp.stage.equals("EX")) {
             if (pipeline.stalling) {
-              System.out.print("I" + ((int) (itemp.inst_num / 4) + 1) + "-stall ");
+              out.print("I" + itemp.pipeline_number + "-stall ");
             } else {
               pipeline.EXE(itemp);
-              if(pipeline.stalling) {
-                System.out.print("I" + ((int) (itemp.inst_num / 4) + 1) + "-stall ");
-              } else 
-                System.out.print("I" + ((int) (itemp.inst_num / 4) + 1) + "-EX ");
+              if (pipeline.stalling) {
+                out.print("I" + itemp.pipeline_number + "-stall ");
+              } else
+                out.print("I" + itemp.pipeline_number + "-EX ");
             }
             // ID
           } else if (itemp.stage.equals("ID")) {
             if (pipeline.stalling) {
-              System.out.print("I" + ((int) (itemp.inst_num / 4) + 1) + "-stall ");
+              out.print("I" + itemp.pipeline_number + "-stall ");
             } else {
-              System.out.print("I" + ((int) (itemp.inst_num / 4) + 1) + "-ID ");
+              out.print("I" + itemp.pipeline_number + "-ID ");
               pipeline.ID(itemp);
             }
             // IF2
           } else if (itemp.stage.equals("IF2")) {
             if (pipeline.stalling) {
-              System.out.print("I" + ((int) (itemp.inst_num / 4) + 1) + "-stall ");
+              out.print("I" + itemp.pipeline_number + "-stall ");
             } else {
-              System.out.print("I" + ((int) (itemp.inst_num / 4) + 1) + "-IF2 ");
+              out.print("I" + itemp.pipeline_number + "-IF2 ");
               pipeline.IF2(itemp);
             }
+
             // IF1
           } else if (itemp.stage.equals("IF1")) {
             if (pipeline.stalling) {
             } else {
-              System.out.print("I" + ((int) (itemp.inst_num / 4) + 1) + "-IF1 ");
+              out.print("I" + itemp.pipeline_number + "-IF1 ");
               pipeline.IF1(itemp);
             }
           }
+        }
+
+        // setup for branching
+        if (pipeline.next_cycle_branch) {
+          // remove skipped over instructions from branch
+          int z = 0;
+          while (z != pipeline.Instructions.size()) {
+            if (pipeline.Instructions.get(z).stage.equals("EX")
+                || pipeline.Instructions.get(z).stage.equals("ID")
+                || pipeline.Instructions.get(z).stage.equals("IF2")) {
+              pipeline.Instructions.remove(z);
+              z--;
+            }
+            z++;
+          }
+          // set PC to branch target
+          pipeline.PC = Branches.get(pipeline.branchdest);
+          pipeline.next_cycle_branch = false;
+
         }
 
         // get new instruction based on PC if not stalling
@@ -164,7 +197,6 @@ public class Main {
               i.stage = "IF1";
               Instruction i2 = new Instruction();
               i2.raw_text = i.raw_text;
-              i2.branch_word = i.branch_word;
               i2.inst_num = i.inst_num;
               i2.stage = i.stage;// clone i
               pipeline.giveInst(i2);
@@ -173,11 +205,15 @@ public class Main {
         }
 
         // end of cycle
-        System.out.println("");
-        pipeline.stalling=false;
+        out.println("");
+        pipeline.stalling = false;
         pipeline.cycle++;
       }
     }
+    System.out.println("Done with simulation");
+    pipeline.print_Registers(out);
+    pipeline.print_Memory(out);
+    out.close();
 
   }
 
@@ -234,7 +270,7 @@ public class Main {
 
     } catch (FileNotFoundException ex) {
       Logger.getLogger("log").log(Level.SEVERE, "File not found", ex);
-      System.out.println("File not found");
+      out.println("File not found");
     }
   }
 

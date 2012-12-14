@@ -1,7 +1,11 @@
+import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
 
 public class Pipeline {
 
@@ -10,12 +14,13 @@ public class Pipeline {
   Map<String, Integer> Registers = new HashMap<String, Integer>();
   Map<String, Integer> Memory = new HashMap<String, Integer>();
   int PC = 0;
-  boolean Asrc = false;
-  int finished=0;
-  // Control Signals
-  
-
+  int pipeline_number = 1;// number of instructions in pipeline
+  int finished = 0;
+  String branchdest = "";
+  boolean next_cycle_branch = false;
   boolean stalling = false;
+
+  // Control Signals
 
   public Pipeline() {
   }
@@ -27,13 +32,14 @@ public class Pipeline {
     Iterator<String> Registerkeys = Registers1.keySet().iterator();
     // Populate list of Registers
     while (Registerkeys.hasNext()) {
-      Register R = new Register();
       temp = Registerkeys.next();
       Registers.put(temp, Registers1.get(temp));
     }
   }
 
   public void giveInst(Instruction i) {
+    i.pipeline_number = pipeline_number;
+    pipeline_number++;
     Instructions.add(i);
   }
 
@@ -65,16 +71,18 @@ public class Pipeline {
       decode_parsingBr(i);
     }
     i.stage = "EX";
+
   }
 
   public void EXE(Instruction i) {
-    
-    Instruction i2=null;
+
+    Instruction i2 = null;
     // check for stalling 1 up
-    int z= getIndex(i);
-    if(z>0){
-       i2 = Instructions.get(z-1);
-      if (i2 != null && i2.opcode.equals("LD") && (i2.stage.equals("MEM1") ||i2.stage.equals("MEM2")||i2.stage.equals("MEM3"))) {
+    int z = getIndex(i);
+    if (z > 0) {
+      i2 = Instructions.get(z - 1);
+      if (i2 != null && i2.opcode.equals("LD")
+          && (i2.stage.equals("MEM1") || i2.stage.equals("MEM2") || i2.stage.equals("MEM3"))) {
         // check source1
         if (i.source1.equals(i2.dest)) {
           stalling = true;
@@ -88,9 +96,10 @@ public class Pipeline {
       }
     }
     // check for stalling 2 up
-    if(z>1){
-       i2 = Instructions.get(z-2);
-      if (i2 != null && i2.opcode.equals("LD") && (i2.stage.equals("MEM1") ||i2.stage.equals("MEM2")||i2.stage.equals("MEM3"))) {
+    if (z > 1) {
+      i2 = Instructions.get(z - 2);
+      if (i2 != null && i2.opcode.equals("LD")
+          && (i2.stage.equals("MEM1") || i2.stage.equals("MEM2") || i2.stage.equals("MEM3"))) {
         // check source1
         if (i.source1.equals(i2.dest)) {
           stalling = true;
@@ -103,29 +112,25 @@ public class Pipeline {
         }
       }
     }
-    
-    //forwarding
-    if(z>0){
-      i2 = Instructions.get(z-1);
-      if(i2.Regwrite && (i2.dest.equals(i.source1)) ){
+
+    // forwarding
+    if (z > 0) {
+      i2 = Instructions.get(z - 1);
+      if (i2.Regwrite && (i2.dest.equals(i.source1))) {
         Registers.put(i.source1, i2.ALUoutput);
-      }
-      else if(i2.Regwrite && i2.re2 && (i2.dest.equals(i.source2)) ){
+      } else if (i2.Regwrite && i2.re2 && (i2.dest.equals(i.source2))) {
         Registers.put(i.source2, i2.ALUoutput);
       }
     }
-    if(z>1){
-      i2 = Instructions.get(z-2);
-      if(i2.Regwrite && (i2.dest.equals(i.source1)) ){
+    if (z > 1) {
+      i2 = Instructions.get(z - 2);
+      if (i2.Regwrite && (i2.dest.equals(i.source1))) {
         Registers.put(i.source1, i2.ALUoutput);
-      }
-      else if(i2.Regwrite && i2.re2 && (i2.dest.equals(i.source2)) ){
+      } else if (i2.Regwrite && i2.re2 && (i2.dest.equals(i.source2))) {
         Registers.put(i.source2, i2.ALUoutput);
       }
     }
-    
-    
-    
+
     // DADD
     if (i.opcode.equals("DADD")) {
       if (!i.source1.equals("") && !i.source2.equals("")) {
@@ -145,8 +150,11 @@ public class Pipeline {
       i.ALUoutput = Registers.get(i.source1) + i.offset;
       // BRANCH
     } else if (i.opcode.equals("BNEZ")) {
-      if (Registers.get(i.source1) == 0) {
+      if (Registers.get(i.source1) != 0) {
         i.branch_taken = true;
+        next_cycle_branch = true;// for pipeline to know to stop executing IF2,
+                                 // ID
+        branchdest = i.branch_word;
       }
     }
 
@@ -196,21 +204,26 @@ public class Pipeline {
     }
   }
 
-  public void print_Registers() {
-    String temp;
-    Iterator<String> keys = Registers.keySet().iterator();
-    while (keys.hasNext()) {
-      temp = keys.next();
-      System.out.println(temp + ": " + Registers.get(temp));
+  public void print_Registers(PrintStream out) {
+
+    String temp="";
+    out.println("REGISTERS");
+    for(int z=1;z!=32;z++){
+      temp="R" + z;
+      if(Registers.get(temp)!=null){
+        out.println(temp + " " + Registers.get(temp));
+      }
     }
   }
 
-  public void print_Memory() {
-    String temp;
-    Iterator<String> keys = Memory.keySet().iterator();
-    while (keys.hasNext()) {
-      temp = keys.next();
-      System.out.println(temp + ": " + Memory.get(temp));
+  public void print_Memory(PrintStream out) {
+    String temp="";
+    out.println("MEMORY");
+    for(int z=0;z!=993;z++){
+      temp= z+"";
+      if(Memory.get(temp)!=null){
+        out.println(temp + " " + Memory.get(temp));
+      }
     }
   }
 
@@ -328,13 +341,13 @@ public class Pipeline {
     if (i.opcode.equals("LD")) {
       i.Regwrite = true;
       i.ALUsrc = true;
-      i. Memread = true;
+      i.Memread = true;
       i.MemtoReg = true;
       i.ws = i.dest;
       i.we_stall = true;
     } else if (i.opcode.equals("SD")) {
       i.ALUsrc = true;
-      i. MemWrite = true;
+      i.MemWrite = true;
     }
 
     // offset
