@@ -117,9 +117,17 @@ public class Pipeline {
     if (z > 0) {
       i2 = Instructions.get(z - 1);
       if (i2.Regwrite && (i2.dest.equals(i.source1))) {
-        Registers.put(i.source1, i2.ALUoutput);
+        if (i2.opcode.equals("LD")) {
+          Registers.put(i.source1, i2.LMD);//forward load result
+        } else {
+          Registers.put(i.source1, i2.ALUoutput);//forward aluoutput
+        }
       } else if (i2.Regwrite && i2.re2 && (i2.dest.equals(i.source2))) {
-        Registers.put(i.source2, i2.ALUoutput);
+        if (i2.opcode.equals("LD")) {
+          Registers.put(i.source2, i2.LMD);//forward load result
+        } else {
+          Registers.put(i.source2, i2.ALUoutput);//forward aluoutput
+        }
       }
     }
     if (z > 1) {
@@ -206,22 +214,22 @@ public class Pipeline {
 
   public void print_Registers(PrintStream out) {
 
-    String temp="";
+    String temp = "";
     out.println("REGISTERS");
-    for(int z=1;z!=32;z++){
-      temp="R" + z;
-      if(Registers.get(temp)!=null){
+    for (int z = 1; z != 32; z++) {
+      temp = "R" + z;
+      if (Registers.get(temp) != null) {
         out.println(temp + " " + Registers.get(temp));
       }
     }
   }
 
   public void print_Memory(PrintStream out) {
-    String temp="";
+    String temp = "";
     out.println("MEMORY");
-    for(int z=0;z!=993;z++){
-      temp= z+"";
-      if(Memory.get(temp)!=null){
+    for (int z = 0; z != 993; z++) {
+      temp = z + "";
+      if (Memory.get(temp) != null) {
         out.println(temp + " " + Memory.get(temp));
       }
     }
